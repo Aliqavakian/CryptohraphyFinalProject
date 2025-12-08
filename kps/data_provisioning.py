@@ -1,3 +1,4 @@
+# kps/data_provisioning.py
 import json
 import os
 from dataclasses import asdict
@@ -25,7 +26,7 @@ class DataProvisioningService:
         os.makedirs(cfg.DATA_DIR, exist_ok=True)
         return cfg.DATA_DIR
 
-    # ------------- SAVE STATE -------------
+
 
     def save_state(self) -> str:
         """
@@ -35,13 +36,13 @@ class DataProvisioningService:
         data_dir = self._ensure_data_dir()
         path = os.path.join(data_dir, self.server.config.STATE_FILE)
 
-        # Convert keys to dict
+
         keys = {
             str(key_id): asdict(key)
             for key_id, key in self.server.get_all_keys().items()
         }
 
-        # Convert users to dict (sets → lists)
+
         users = {}
         for user_id, user in self.server.get_all_users().items():
             user_dict = asdict(user)
@@ -59,7 +60,7 @@ class DataProvisioningService:
 
         return path
 
-    # ------------- LOAD STATE -------------
+
 
     def load_state(self) -> None:
         """
@@ -74,20 +75,17 @@ class DataProvisioningService:
         with open(path, "r", encoding="utf-8") as f:
             state = json.load(f)
 
-        # Optional: you could validate config differences here if you want
-        # cfg_dict = state.get("config", {})
 
-        # Rebuild keys
         keys: Dict[int, Key] = {}
         for key_id_str, key_dict in state.get("keys", {}).items():
             key_id = int(key_id_str)
             keys[key_id] = Key(key_id=key_id, value=key_dict["value"])
 
-        # Rebuild users
+
         users: Dict[str, User] = {}
         for user_id, user_dict in state.get("users", {}).items():
             key_ids = set(user_dict.get("key_ids", []))
             users[user_id] = User(user_id=user_id, key_ids=key_ids)
 
-        # Update the server's in-memory state
+        #
         self.server.replace_state(keys=keys, users=users)

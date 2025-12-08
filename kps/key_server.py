@@ -1,3 +1,4 @@
+# kps/key_server.py
 import random
 import secrets
 from typing import Dict, Optional
@@ -21,7 +22,7 @@ class KeyServer:
         self._keys: Dict[int, Key] = {}
         self._users: Dict[str, User] = {}
 
-    # ------------- SERVER PART: KEY POOL GENERATION -------------
+
 
     def generate_key_pool(self) -> None:
         """
@@ -29,11 +30,10 @@ class KeyServer:
         """
         self._keys.clear()
         for key_id in range(self.config.KEY_POOL_SIZE):
-            # 128-bit random key, stored as hex
             value = secrets.token_hex(16)
             self._keys[key_id] = Key(key_id=key_id, value=value)
 
-    # ------------- SERVER PART: USER REGISTRATION -------------
+
 
     def register_user(self, user_id: str) -> User:
         """
@@ -56,7 +56,7 @@ class KeyServer:
         self._users[user_id] = user
         return user
 
-    # ------------- ACCESSORS -------------
+
 
     def get_user(self, user_id: str) -> Optional[User]:
         return self._users.get(user_id)
@@ -70,7 +70,7 @@ class KeyServer:
     def get_key_value(self, key_id: int) -> str:
         return self._keys[key_id].value
 
-    # ------------- USED BY DATA PROVISIONING -------------
+
 
     def replace_state(self, keys: Dict[int, Key], users: Dict[str, User]) -> None:
         """

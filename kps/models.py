@@ -1,3 +1,4 @@
+# kps/models.py
 from dataclasses import dataclass, field
 from typing import Set
 
@@ -9,7 +10,7 @@ class Key:
     value is stored as hex string to make JSON saving easy.
     """
     key_id: int
-    value: str  # hex string
+    value: str
 
 
 @dataclass
