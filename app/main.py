@@ -1,4 +1,14 @@
 # app/main.py
+"""Demo script for the key predistribution system."""
+
+import os
+import sys
+
+# Ensure the project root (which contains the ``kps`` package) is on sys.path
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 from kps.config import KeyDistributionConfig
 from kps.key_server import KeyServer
 from kps.data_provisioning import DataProvisioningService
