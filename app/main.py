@@ -85,7 +85,9 @@ def _print_matrix(matrix) -> None:
 def run_matrix_key_agreement_demo() -> None:
     import hashlib
 
+    print("\n============================")
     print("Step 1: Server Setup")
+    print("============================")
     prime = _prompt_int("Enter a prime modulus p: ", minimum=3)
     dimension = _prompt_int("Enter the matrix dimension: ", minimum=1)
 
@@ -93,7 +95,9 @@ def run_matrix_key_agreement_demo() -> None:
     print("\nGenerated symmetric secret matrix S:")
     _print_matrix(server.secret_matrix)
 
-    print("\nStep 2: User Registration")
+    print("\n============================")
+    print("Step 2: User Registration")
+    print("============================")
     num_users = _prompt_int("How many users to register? ", minimum=1)
 
     for idx in range(1, num_users + 1):
@@ -104,15 +108,17 @@ def run_matrix_key_agreement_demo() -> None:
                 print("User ID cannot be empty.")
 
         user = server.register_user(user_id)
-        print(f"User '{user.user_id}' registered.")
+        print(f"\nUser '{user.user_id}' registered.")
         print(f"  Secret vector (x): {user.secret_vector}")
-        print(f"  Public vector (S*x mod p): {user.public_vector}\n")
+        print(f"  Public vector (S*x mod p): {user.public_vector}")
 
     if num_users < 2:
-        print("Need at least two users to establish a shared key.")
+        print("\nNeed at least two users to establish a shared key.")
         return
 
+    print("\n============================")
     print("Step 3: Key Agreement Between Users")
+    print("============================")
     registered_ids = list(server.all_users().keys())
     print(f"Registered users: {', '.join(registered_ids)}")
 
@@ -133,12 +139,14 @@ def run_matrix_key_agreement_demo() -> None:
     print(f"\n{user_a} computes shared key with {user_b}: {shared_a} (mod {prime})")
     print(f"{user_b} computes shared key with {user_a}: {shared_b} (mod {prime})")
     if shared_a == shared_b:
-        print("Keys match! A shared secret has been established.\n")
+        print("Keys match! A shared secret has been established.")
     else:
-        print("Keys do not match. Something went wrong.\n")
+        print("Keys do not match. Something went wrong.")
         return
 
+    print("\n============================")
     print("Step 4 (Optional): Encryption Test")
+    print("============================")
     message = input("Enter a message to encrypt (leave blank to skip): ")
     if not message:
         print("Skipped encryption demo.")
