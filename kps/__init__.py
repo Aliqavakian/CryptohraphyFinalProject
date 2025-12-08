@@ -9,4 +9,5 @@ Modules:
 - data_provisioning
 - shared_key_service
 - aes_cipher
+- matrix_key_exchange
 """
