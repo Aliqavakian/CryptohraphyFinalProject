@@ -166,9 +166,13 @@ def run_matrix_key_agreement_demo() -> None:
 
 
 def run_cli_demo() -> None:
+    print("=== Key predistribution CLI demo ===")
+    pool_size = _prompt_int("Enter key pool size (e.g., 50): ")
+    keys_per_user = _prompt_int("Enter keys per user (e.g., 8): ")
+
     config = KeyDistributionConfig(
-        KEY_POOL_SIZE=50,
-        KEYS_PER_USER=8
+        KEY_POOL_SIZE=pool_size,
+        KEYS_PER_USER=keys_per_user
     )
     server = KeyServer(config=config)
 
@@ -177,12 +181,22 @@ def run_cli_demo() -> None:
     data_service = DataProvisioningService(server)
     shared_service = SharedKeyService(server)
 
-    alice = server.register_user("alice")
-    bob = server.register_user("bob")
-    carol = server.register_user("carol")
+    num_users = _prompt_int("How many users to register? ")
+    for idx in range(1, num_users + 1):
+        while True:
+            user_id = input(f"Enter user #{idx} ID: ").strip()
+            if not user_id:
+                print("User ID cannot be empty.")
+                continue
+            try:
+                server.register_user(user_id)
+            except ValueError as exc:
+                print(str(exc))
+                continue
+            break
 
     print("=== Users and their assigned key IDs ===")
-    for user in (alice, bob, carol):
+    for user in server.get_all_users().values():
         print(f"{user.user_id}: {sorted(user.key_ids)}")
     print()
 
@@ -193,8 +207,14 @@ def run_cli_demo() -> None:
     print_pairwise_common_keys_matrix(server, shared_service)
 
     print("=== Shared keys between users (derived via SHA-256) ===")
-    pairs = [("alice", "bob"), ("alice", "carol"), ("bob", "carol")]
-    for u1, u2 in pairs:
+    while True:
+        pair_input = input("Enter two user IDs separated by space (or blank to finish): ").split()
+        if not pair_input:
+            break
+        if len(pair_input) != 2:
+            print("Please provide exactly two user IDs.")
+            continue
+        u1, u2 = pair_input
         shared_key_hex = shared_service.compute_shared_key(u1, u2)
         if shared_key_hex is None:
             print(f"{u1} ↔️ {u2}: NO common predistributed keys → no shared key.")
@@ -204,33 +224,31 @@ def run_cli_demo() -> None:
 
     print("=== AES demo using derived shared key ===")
 
-    demo_pair = None
-    demo_key_bytes = None
-
-    for u1, u2 in pairs:
-        key_bytes = shared_service.compute_shared_key_bytes(u1, u2)
-        if key_bytes is not None:
-            demo_pair = (u1, u2)
-            demo_key_bytes = key_bytes
+    while True:
+        pair_input = input("Enter two user IDs for AES demo (or blank to skip): ").split()
+        if not pair_input:
+            print("Skipped AES demo.")
             break
-
-    if demo_pair is None:
-        print("No user pair shares any keys → cannot run AES demo.")
-    else:
-        u1, u2 = demo_pair
-        aes_key = demo_key_bytes
-        aes = AESCipher(aes_key)
-
-        plaintext = f"Hello from {u1} to {u2} via AES!".encode("utf-8")
-        nonce, ciphertext, tag = aes.encrypt(plaintext)
+        if len(pair_input) != 2:
+            print("Please provide exactly two user IDs.")
+            continue
+        u1, u2 = pair_input
+        key_bytes = shared_service.compute_shared_key_bytes(u1, u2)
+        if key_bytes is None:
+            print("Selected users do not share any keys. Try another pair.")
+            continue
+        message = input("Enter plaintext message to encrypt: ").encode("utf-8")
+        aes = AESCipher(key_bytes)
+        nonce, ciphertext, tag = aes.encrypt(message)
         decrypted = aes.decrypt(nonce, ciphertext, tag)
 
         print(f"Using pair: {u1} & {u2}")
-        print(f"Derived AES key (hex): {aes_key.hex()}")
+        print(f"Derived AES key (hex): {key_bytes.hex()}")
         print(f"Nonce       (hex): {nonce.hex()}")
         print(f"Ciphertext  (hex): {ciphertext.hex()}")
         print(f"Tag         (hex): {tag.hex()}")
         print(f"Decrypted plaintext: {decrypted.decode('utf-8')}")
+        break
     print()
 
     path = data_service.save_state()
@@ -238,8 +256,7 @@ def run_cli_demo() -> None:
 
     print("\nReloading state from disk to verify...")
     data_service.load_state()
-    reloaded_alice = server.get_user("alice")
-    print(f"Reloaded Alice has keys: {sorted(reloaded_alice.key_ids)}")
+    print("State reloaded successfully.")
 
 
 def main() -> None:
