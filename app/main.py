@@ -15,6 +15,7 @@ from kps.key_server import KeyServer
 from kps.data_provisioning import DataProvisioningService
 from kps.shared_key_service import SharedKeyService
 from kps.aes_cipher import AESCipher
+from kps.matrix_key_exchange import MatrixKeyServer
 
 
 def print_user_key_rings(server: KeyServer) -> None:
@@ -61,6 +62,99 @@ def print_pairwise_common_keys_matrix(
         row_str = " ".join(f"{c:5d}" for c in row_counts)
         print(f"{u1:5s} {row_str}")
     print()
+
+
+def _prompt_int(prompt: str, minimum: int = 1) -> int:
+    while True:
+        raw = input(prompt).strip()
+        try:
+            value = int(raw)
+            if value < minimum:
+                print(f"Please enter a number >= {minimum}.")
+                continue
+            return value
+        except ValueError:
+            print("Please enter a valid integer.")
+
+
+def _print_matrix(matrix) -> None:
+    for row in matrix:
+        print("  " + " ".join(f"{val:4d}" for val in row))
+
+
+def run_matrix_key_agreement_demo() -> None:
+    import hashlib
+
+    print("Step 1: Server Setup")
+    prime = _prompt_int("Enter a prime modulus p: ", minimum=3)
+    dimension = _prompt_int("Enter the matrix dimension: ", minimum=1)
+
+    server = MatrixKeyServer(prime=prime, dimension=dimension)
+    print("\nGenerated symmetric secret matrix S:")
+    _print_matrix(server.secret_matrix)
+
+    print("\nStep 2: User Registration")
+    num_users = _prompt_int("How many users to register? ", minimum=1)
+
+    for idx in range(1, num_users + 1):
+        user_id = ""
+        while not user_id:
+            user_id = input(f"Enter user #{idx} ID: ").strip()
+            if not user_id:
+                print("User ID cannot be empty.")
+
+        user = server.register_user(user_id)
+        print(f"User '{user.user_id}' registered.")
+        print(f"  Secret vector (x): {user.secret_vector}")
+        print(f"  Public vector (S*x mod p): {user.public_vector}\n")
+
+    if num_users < 2:
+        print("Need at least two users to establish a shared key.")
+        return
+
+    print("Step 3: Key Agreement Between Users")
+    registered_ids = list(server.all_users().keys())
+    print(f"Registered users: {', '.join(registered_ids)}")
+
+    while True:
+        pair_input = input("Enter two user IDs separated by space: ").split()
+        if len(pair_input) != 2:
+            print("Please provide exactly two user IDs.")
+            continue
+        user_a, user_b = pair_input
+        if user_a not in server.all_users() or user_b not in server.all_users():
+            print("Both IDs must correspond to registered users.")
+            continue
+        break
+
+    shared_a = server.compute_shared_value(user_a, user_b)
+    shared_b = server.compute_shared_value(user_b, user_a)
+
+    print(f"\n{user_a} computes shared key with {user_b}: {shared_a} (mod {prime})")
+    print(f"{user_b} computes shared key with {user_a}: {shared_b} (mod {prime})")
+    if shared_a == shared_b:
+        print("Keys match! A shared secret has been established.\n")
+    else:
+        print("Keys do not match. Something went wrong.\n")
+        return
+
+    print("Step 4 (Optional): Encryption Test")
+    message = input("Enter a message to encrypt (leave blank to skip): ")
+    if not message:
+        print("Skipped encryption demo.")
+        return
+
+    derived_key = hashlib.sha256(str(shared_a).encode("utf-8")).digest()
+    aes = AESCipher(derived_key)
+    nonce, ciphertext, tag = aes.encrypt(message.encode("utf-8"))
+    decrypted = aes.decrypt(nonce, ciphertext, tag).decode("utf-8")
+
+    print("\nEncryption with derived key:")
+    print(f"  Nonce      (hex): {nonce.hex()}")
+    print(f"  Ciphertext (hex): {ciphertext.hex()}")
+    print(f"  Tag        (hex): {tag.hex()}")
+    print(f"  Decrypted message: {decrypted}")
+    print("\nCommunication verified using the shared secret.")
 
 
 def run_cli_demo() -> None:
@@ -147,12 +241,19 @@ def main() -> None:
         action="store_true",
         help="Launch the Tkinter GUI instead of the CLI demo",
     )
+    parser.add_argument(
+        "--matrix-demo",
+        action="store_true",
+        help="Run the interactive matrix-based key agreement demo",
+    )
     args = parser.parse_args()
 
     if args.gui:
         from app.gui import launch_gui
 
         launch_gui()
+    elif args.matrix_demo:
+        run_matrix_key_agreement_demo()
     else:
         run_cli_demo()
 
