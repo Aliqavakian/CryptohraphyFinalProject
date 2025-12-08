@@ -224,8 +224,11 @@ class KeyDistributionGUI:
         if not user_a or not user_b:
             messagebox.showinfo("Missing users", "Enter both user IDs first (in Shared Keys section).")
             return
-
-        key_bytes = self.shared_service.compute_shared_key_bytes(user_a, user_b)
+        try:
+            key_bytes = self.shared_service.compute_shared_key_bytes(user_a, user_b)
+        except ValueError as exc:
+            messagebox.showerror("User error", str(exc))
+            return
         if key_bytes is None:
             messagebox.showinfo("No shared key", "The selected users do not share any predistributed keys.")
             return
