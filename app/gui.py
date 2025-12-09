@@ -48,6 +48,7 @@ class KeyDistributionGUI:
         self._build_user_frame()
         self._build_shared_key_frame()
         self._build_aes_frame()
+        self._build_state_frame()
         self._build_output_area()
 
     def _build_config_frame(self) -> None:
@@ -113,9 +114,36 @@ class KeyDistributionGUI:
         aes_btn = tk.Button(frame, text="Encrypt + Decrypt", command=self.run_aes_demo)
         aes_btn.grid(row=2, column=0, sticky="e", pady=4)
 
+    def _build_state_frame(self) -> None:
+        frame = tk.LabelFrame(self.root, text="5. Inspect & Persist State")
+        frame.grid(row=4, column=0, sticky="ew", padx=10, pady=5)
+        for col in range(4):
+            frame.columnconfigure(col, weight=1)
+
+        tk.Button(frame, text="Show Key Rings", command=self.show_key_rings).grid(
+            row=0, column=0, padx=4, pady=2, sticky="ew"
+        )
+        tk.Button(
+            frame,
+            text="Show Assignment Matrix",
+            command=self.show_assignment_matrix,
+        ).grid(row=0, column=1, padx=4, pady=2, sticky="ew")
+        tk.Button(
+            frame,
+            text="Show Pairwise Matrix",
+            command=self.show_pairwise_matrix,
+        ).grid(row=0, column=2, padx=4, pady=2, sticky="ew")
+
+        tk.Button(frame, text="Save State", command=self.save_state).grid(
+            row=0, column=3, padx=4, pady=2, sticky="ew"
+        )
+        tk.Button(frame, text="Load State", command=self.load_state).grid(
+            row=1, column=3, padx=4, pady=2, sticky="ew"
+        )
+
     def _build_output_area(self) -> None:
         frame = tk.LabelFrame(self.root, text="Output")
-        frame.grid(row=4, column=0, sticky="nsew", padx=10, pady=5)
+        frame.grid(row=5, column=0, sticky="nsew", padx=10, pady=5)
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
 
@@ -125,7 +153,7 @@ class KeyDistributionGUI:
         clear_btn = tk.Button(frame, text="Clear Output", command=self.clear_output)
         clear_btn.grid(row=1, column=0, sticky="e", pady=4)
 
-        self.root.rowconfigure(4, weight=1)
+        self.root.rowconfigure(5, weight=1)
 
     def log(self, message: str) -> None:
         self.output.configure(state="normal")
@@ -243,6 +271,99 @@ class KeyDistributionGUI:
         self.log(f"Ciphertext (hex): {ciphertext.hex()}")
         self.log(f"Tag (hex):        {tag.hex()}")
         self.log(f"Decrypted text:   {decrypted.decode('utf-8')}")
+
+    def show_key_rings(self) -> None:
+        if not self._require_server():
+            return
+
+        if not self.server.get_all_users():
+            self.log("No users registered yet.")
+            return
+
+        self.log("=== User key rings (key_id -> key_value_hex) ===")
+        for user in sorted(self.server.get_all_users().values(), key=lambda u: u.user_id):
+            self.log(f"User {user.user_id}:")
+            for key_id in sorted(user.key_ids):
+                key_value = self.server.get_key_value(key_id)
+                self.log(f"  key_id = {key_id:2d}   value = {key_value}")
+            self.log("")
+
+    def show_assignment_matrix(self) -> None:
+        if not self._require_server():
+            return
+
+        users = sorted(self.server.get_all_users().values(), key=lambda u: u.user_id)
+        key_ids = sorted(self.server.get_all_keys().keys())
+
+        if not users:
+            self.log("No users registered yet.")
+            return
+        if not key_ids:
+            self.log("Key pool is empty. Initialize the system first.")
+            return
+
+        header = "      " + " ".join(f"{kid:2d}" for kid in key_ids)
+        self.log("=== User–key assignment matrix ===")
+        self.log(header)
+        self.log("      " + "--" * len(key_ids))
+
+        for user in users:
+            row = ["1" if kid in user.key_ids else "0" for kid in key_ids]
+            self.log(f"{user.user_id:5s} " + "  ".join(row))
+        self.log("")
+
+    def show_pairwise_matrix(self) -> None:
+        if not self._require_server() or self.shared_service is None:
+            return
+
+        users = sorted(self.server.get_all_users().values(), key=lambda u: u.user_id)
+        ids = [u.user_id for u in users]
+
+        if not ids:
+            self.log("No users registered yet.")
+            return
+
+        header = "      " + " ".join(f"{uid:5s}" for uid in ids)
+        self.log("=== Pairwise common-keys matrix (entries = number of shared keys) ===")
+        self.log(header)
+        self.log("      " + "-" * (6 * len(ids)))
+
+        for u1 in ids:
+            row_counts = []
+            for u2 in ids:
+                common = self.shared_service.common_key_ids(u1, u2)
+                row_counts.append(len(common))
+            row_str = " ".join(f"{c:5d}" for c in row_counts)
+            self.log(f"{u1:5s} {row_str}")
+        self.log("")
+
+    def save_state(self) -> None:
+        if not self._require_server() or self.data_service is None:
+            return
+
+        try:
+            path = self.data_service.save_state()
+        except OSError as exc:
+            messagebox.showerror("Save failed", str(exc))
+            return
+
+        self.log(f"State saved to: {path}")
+
+    def load_state(self) -> None:
+        if not self._require_server() or self.data_service is None:
+            return
+
+        try:
+            self.data_service.load_state()
+        except FileNotFoundError as exc:
+            messagebox.showwarning("Load failed", str(exc))
+            return
+        except OSError as exc:
+            messagebox.showerror("Load failed", str(exc))
+            return
+
+        self.log("State reloaded successfully.")
+        self.list_users()
 
     # ------------------------------------------------------------------
     def run(self) -> None:
