@@ -43,17 +43,28 @@ class KeyDistributionGUI:
     # ------------------------------------------------------------------
     def _build_ui(self) -> None:
         self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
 
-        self._build_config_frame()
-        self._build_user_frame()
-        self._build_shared_key_frame()
-        self._build_aes_frame()
-        self._build_state_frame()
-        self._build_output_area()
+        content = tk.Frame(self.root)
+        content.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        content.columnconfigure(0, weight=0)
+        content.columnconfigure(1, weight=1)
+        content.rowconfigure(0, weight=1)
 
-    def _build_config_frame(self) -> None:
-        frame = tk.LabelFrame(self.root, text="1. Configure & Initialize")
-        frame.grid(row=0, column=0, sticky="ew", padx=10, pady=5)
+        control_column = tk.Frame(content)
+        control_column.grid(row=0, column=0, sticky="ns", padx=(0, 12))
+        control_column.columnconfigure(0, weight=1)
+
+        self._build_config_frame(control_column, row=0)
+        self._build_user_frame(control_column, row=1)
+        self._build_shared_key_frame(control_column, row=2)
+        self._build_aes_frame(control_column, row=3)
+        self._build_state_frame(control_column, row=4)
+        self._build_output_area(content)
+
+    def _build_config_frame(self, parent: tk.Misc, row: int) -> None:
+        frame = tk.LabelFrame(parent, text="1. Configure & Initialize", padx=8, pady=6)
+        frame.grid(row=row, column=0, sticky="ew", pady=(0, 8))
         frame.columnconfigure(3, weight=1)
 
         tk.Label(frame, text="Key pool size:").grid(row=0, column=0, sticky="w")
@@ -69,9 +80,9 @@ class KeyDistributionGUI:
         init_btn = tk.Button(frame, text="Initialize", command=self.initialize_system)
         init_btn.grid(row=0, column=4, padx=10)
 
-    def _build_user_frame(self) -> None:
-        frame = tk.LabelFrame(self.root, text="2. Register Users")
-        frame.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+    def _build_user_frame(self, parent: tk.Misc, row: int) -> None:
+        frame = tk.LabelFrame(parent, text="2. Register Users", padx=8, pady=6)
+        frame.grid(row=row, column=0, sticky="ew", pady=(0, 8))
         frame.columnconfigure(1, weight=1)
 
         tk.Label(frame, text="User ID:").grid(row=0, column=0, sticky="w")
@@ -84,9 +95,9 @@ class KeyDistributionGUI:
         list_btn = tk.Button(frame, text="List Users", command=self.list_users)
         list_btn.grid(row=0, column=3, padx=5)
 
-    def _build_shared_key_frame(self) -> None:
-        frame = tk.LabelFrame(self.root, text="3. Shared Keys")
-        frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
+    def _build_shared_key_frame(self, parent: tk.Misc, row: int) -> None:
+        frame = tk.LabelFrame(parent, text="3. Shared Keys", padx=8, pady=6)
+        frame.grid(row=row, column=0, sticky="ew", pady=(0, 8))
         for col in range(4):
             frame.columnconfigure(col, weight=1)
 
@@ -101,9 +112,9 @@ class KeyDistributionGUI:
         compute_btn = tk.Button(frame, text="Compute Shared Key", command=self.compute_shared_key)
         compute_btn.grid(row=1, column=0, columnspan=4, pady=4)
 
-    def _build_aes_frame(self) -> None:
-        frame = tk.LabelFrame(self.root, text="4. AES Demo (using derived key)")
-        frame.grid(row=3, column=0, sticky="ew", padx=10, pady=5)
+    def _build_aes_frame(self, parent: tk.Misc, row: int) -> None:
+        frame = tk.LabelFrame(parent, text="4. AES Demo (using derived key)", padx=8, pady=6)
+        frame.grid(row=row, column=0, sticky="ew", pady=(0, 8))
         frame.columnconfigure(0, weight=1)
 
         tk.Label(frame, text="Message to encrypt:").grid(row=0, column=0, sticky="w")
@@ -114,9 +125,9 @@ class KeyDistributionGUI:
         aes_btn = tk.Button(frame, text="Encrypt + Decrypt", command=self.run_aes_demo)
         aes_btn.grid(row=2, column=0, sticky="e", pady=4)
 
-    def _build_state_frame(self) -> None:
-        frame = tk.LabelFrame(self.root, text="5. Inspect & Persist State")
-        frame.grid(row=4, column=0, sticky="ew", padx=10, pady=5)
+    def _build_state_frame(self, parent: tk.Misc, row: int) -> None:
+        frame = tk.LabelFrame(parent, text="5. Inspect & Persist State", padx=8, pady=6)
+        frame.grid(row=row, column=0, sticky="ew", pady=(0, 8))
         for col in range(4):
             frame.columnconfigure(col, weight=1)
 
@@ -135,15 +146,15 @@ class KeyDistributionGUI:
         ).grid(row=0, column=2, padx=4, pady=2, sticky="ew")
 
         tk.Button(frame, text="Save State", command=self.save_state).grid(
-            row=0, column=3, padx=4, pady=2, sticky="ew"
+            row=1, column=0, padx=4, pady=2, sticky="ew"
         )
         tk.Button(frame, text="Load State", command=self.load_state).grid(
-            row=1, column=3, padx=4, pady=2, sticky="ew"
+            row=1, column=1, padx=4, pady=2, sticky="ew"
         )
 
-    def _build_output_area(self) -> None:
-        frame = tk.LabelFrame(self.root, text="Output")
-        frame.grid(row=5, column=0, sticky="nsew", padx=10, pady=5)
+    def _build_output_area(self, parent: tk.Misc) -> None:
+        frame = tk.LabelFrame(parent, text="Output", padx=8, pady=6)
+        frame.grid(row=0, column=1, sticky="nsew")
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
 
@@ -152,8 +163,6 @@ class KeyDistributionGUI:
 
         clear_btn = tk.Button(frame, text="Clear Output", command=self.clear_output)
         clear_btn.grid(row=1, column=0, sticky="e", pady=4)
-
-        self.root.rowconfigure(5, weight=1)
 
     def log(self, message: str) -> None:
         self.output.configure(state="normal")
